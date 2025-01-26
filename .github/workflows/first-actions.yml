@@ -1,0 +1,62 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      # Install dependencies (for rsync and SSH)
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rsync ssh
+
+      # Set environment variables
+      - name: Set up environment variables
+        run: |
+          echo "TARGET_SERVER=chatapp@10.0.3.11" >> $GITHUB_ENV
+          echo "APP_DIR=/new_chatapp" >> $GITHUB_ENV
+          echo "APP_SUBDIR=fundoo" >> $GITHUB_ENV
+          echo "VENV_DIR=$APP_DIR/venv" >> $GITHUB_ENV
+
+      # Sync code to backend server
+      - name: Sync application code
+        run: |
+          rsync -avz --exclude '.git' ./ $TARGET_SERVER:$APP_DIR
+
+      # Build and deploy the application
+      - name: Build and deploy
+        run: |
+          ssh $TARGET_SERVER << EOF
+            set -e
+            cd $APP_DIR
+            source $VENV_DIR/bin/activate
+            pip install -r requirements.txt
+            cd $APP_SUBDIR
+            python3 manage.py makemigrations
+            bash ~/run_migrate.sh
+            sudo systemctl restart django.service
+            sudo systemctl status django.service
+          EOF
+
+      # Notify completion
+      - name: Notify completion
+        run: echo "CI/CD pipeline completed successfully!"
