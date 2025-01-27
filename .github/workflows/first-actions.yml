@@ -16,7 +16,7 @@ jobs:
       TARGET_SERVER: "chatapp@10.0.3.11"
       APP_DIR: "/new_chatapp"
       APP_SUBDIR: "fundoo"
-      VENV_DIR: "$APP_DIR/venv"
+      VENV_DIR: "/new_chatapp/venv"
 
     steps:
       # Step 1: Checkout code
@@ -33,7 +33,7 @@ jobs:
       - name: Build and deploy application
         run: |
           echo "Building and deploying application..."
-          ssh $TARGET_SERVER << EOF
+          ssh $TARGET_SERVER -o SendEnv=VENV_DIR -o SendEnv=APP_DIR -o SendEnv=APP_SUBDIR << EOF
               set -e
 
               cd $APP_DIR
